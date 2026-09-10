@@ -1,0 +1,243 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * K-AECS — Modern government design system (KPSTI Sabah)
+ * Deep navy shell, royal-blue primary, gold official accent.
+ */
+
+:root {
+  --bg: #eef2f8;
+  --bg-deep: #e7ecf5;
+  --fg: #0f2340;
+  --muted: #f1f5f9;
+  --muted-foreground: #5b6b84;
+  --card: #ffffff;
+  --card-foreground: #0f2340;
+  --popover: #ffffff;
+  --popover-foreground: #0f2340;
+  --border: #e2e8f2;
+  --input: #d5deeb;
+  --ring: #5b8def;
+
+  --primary: #1d4ed8;
+  --primary-hover: #1e46b8;
+  --primary-soft: #e3ecff;
+  --primary-soft-fg: #1e40af;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #1f2f4d;
+  --accent: #f1f5f9;
+  --accent-foreground: #0f2340;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --sidebar: #0b1d33;
+  --sidebar-top: #0d2140;
+  --sidebar-foreground: #aebdd4;
+  --sidebar-heading: #5f7392;
+  --sidebar-primary: #f8fafc;
+  --sidebar-primary-fg: #0b1d33;
+  --sidebar-accent: #17345c;
+  --sidebar-accent-fg: #e8f0ff;
+  --sidebar-border: rgb(148 163 184 / 0.14);
+  --sidebar-ring: #5b8def;
+  --sidebar-active-bar: #3b82f6;
+
+  --gold: #b8860b;
+  --gold-soft: #fbf3dd;
+  --gold-strong: #8a6508;
+
+  --radius: 0.625rem;
+
+  /* charts */
+  --chart-1: #1d4ed8;
+  --chart-2: #0ea5e9;
+  --chart-3: #f59e0b;
+  --chart-4: #10b981;
+  --chart-5: #8b5cf6;
+  --chart-6: #f43f5e;
+  --chart-7: #64748b;
+
+  /* status semantics */
+  --st-submitted: #2563eb;
+  --st-in_review: #0ea5e9;
+  --st-assigned: #7c3aed;
+  --st-in_progress: #d97706;
+  --st-pending_info: #0284c7;
+  --st-awaiting_ministry: #6b21a8;
+  --st-resolved: #059669;
+  --st-closed: #475569;
+  --st-escalated: #ea580c;
+  --st-rejected: #dc2626;
+}
+
+@theme inline {
+  --font-sans: var(--font-sans);
+  --font-heading: var(--font-sans);
+  --color-bg: var(--bg);
+  --color-bg-deep: var(--bg-deep);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-strong: var(--gold-strong);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-fg: var(--primary-soft-fg);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-top: var(--sidebar-top);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-heading: var(--sidebar-heading);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-fg: var(--sidebar-primary-fg);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-fg: var(--sidebar-accent-fg);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-active-bar: var(--sidebar-active-bar);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-fg: var(--accent-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--fg);
+  --color-background: var(--bg);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-weight: 450;
+    font-variant-numeric: tabular-nums;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    @apply font-heading tracking-tight;
+    text-wrap: balance;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 22%, transparent);
+  }
+}
+
+/* thin, tinted scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--muted-foreground) 30%, transparent);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* utility: soft primary chip */
+.surface-primary-soft {
+  background: var(--primary-soft);
+  color: var(--primary-soft-fg);
+}
+
+/* decorative government motif (subtle diagonal weave for dark panels) */
+.gov-weave {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.04) 0,
+    rgb(255 255 255 / 0.04) 1px,
+    transparent 1px,
+    transparent 12px
+  );
+}
+
+.gov-grid-light {
+  background-image:
+    linear-gradient(to right, rgb(15 35 64 / 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(15 35 64 / 0.04) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* status badge neutral base (colours applied per-status in StatusBadge) */
+.st-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 1.375rem;
+  border-radius: 9999px;
+  padding-inline: 0.55rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.st-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* skip link */
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -3rem;
+  z-index: 60;
+  border-radius: 0.5rem;
+  background: var(--primary);
+  color: #fff;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  transition: top 0.15s ease;
+}
+.skip-link:focus {
+  top: 0.75rem;
+}

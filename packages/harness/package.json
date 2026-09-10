@@ -1,0 +1,32 @@
+{
+  "name": "@k-aecs/harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsc -b --watch"
+  },
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "^0.83.0",
+    "@earendil-works/pi-ai": "^0.83.0",
+    "@k-aecs/config": "workspace:*",
+    "@k-aecs/database": "workspace:*",
+    "@k-aecs/shared": "workspace:*",
+    "@k-aecs/tools": "workspace:*",
+    "typebox": "1.3.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "typescript": "^5.6.3"
+  }
+}

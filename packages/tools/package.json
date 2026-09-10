@@ -1,0 +1,31 @@
+{
+  "name": "@k-aecs/tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsc -b --watch",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@k-aecs/config": "workspace:*",
+    "@k-aecs/shared": "workspace:*",
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.23.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "typescript": "^5.6.3",
+    "vitest": "^5.0.0"
+  }
+}

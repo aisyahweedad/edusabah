@@ -1,0 +1,41 @@
+{
+  "name": "@k-aecs/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "import": "./dist/schema/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsc -b --watch",
+    "db:migrate": "tsx src/migrate.ts",
+    "db:generate": "tsx node_modules/drizzle-kit/bin.cjs generate",
+    "db:push": "tsx node_modules/drizzle-kit/bin.cjs push",
+    "db:seed": "tsx src/seed/index.ts"
+  },
+  "dependencies": {
+    "@k-aecs/config": "workspace:*",
+    "@k-aecs/shared": "workspace:*",
+    "@libsql/client": "^0.18.0",
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.36.4",
+    "drizzle-zod": "^0.7.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "drizzle-kit": "^0.28.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
