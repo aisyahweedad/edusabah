@@ -64,7 +64,7 @@ export function registerBotHandlers(bot: Bot<BotContext>): void {
     const choice = ctx.match[1];
     if (choice === "decline") {
       await ctx.answerCallbackQuery();
-      await ctx.reply("Baiklah. Anda perlu bersetuju dengan dasar data sebelum menggunakan K-AECS. Ketik /start bila bersedia.");
+      await ctx.reply("Baiklah. Anda perlu bersetuju dengan dasar data sebelum menggunakan EduSabah. Ketik /start bila bersedia.");
       setState(chatId, { kind: "idle" });
       return;
     }
@@ -309,7 +309,7 @@ async function confirmReply(ctx: BotContext, data: WizardDraft): Promise<void> {
 
 async function helpReply(ctx: BotContext): Promise<void> {
   await ctx.reply(
-    "<b>Bantuan K-AECS</b>\n\n" +
+    "<b>Bantuan EduSabah</b>\n\n" +
       "• <b>Tanya Soalan</b> — tanya isu pendidikan; AI kami mencari jawapan dalam pangkalan pengetahuan dan web.\n" +
       "• <b>Buat Aduan</b> — bimbingan langkah demi langkah untuk menyerahkan aduan.\n" +
       "• <b>Semak Aduan</b> — semak status aduan menggunakan nombor rujukan.\n\n" +

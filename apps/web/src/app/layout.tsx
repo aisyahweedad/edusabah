@@ -7,12 +7,12 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: {
-    default: "K-AECS · Sistem Aduan KPSTI",
-    template: "%s · K-AECS",
+    default: "EduSabah · Sistem Aduan KPSTI",
+    template: "%s · EduSabah",
   },
   description:
     "Pusat Pengurusan Aduan & Penglibatan Warganegara — Kementerian Pendidikan, Sains dan Inovasi Negeri Sabah",
-  applicationName: "K-AECS",
+  applicationName: "EduSabah",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

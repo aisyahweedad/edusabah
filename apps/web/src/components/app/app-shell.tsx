@@ -34,7 +34,7 @@ const ROLE_LABELS: Record<string, string> = {
 function pageMeta(pathname: string): { crumb: string; title: string } {
   const detail = pathname.startsWith("/complaints/");
   if (detail) return { crumb: "Aduan / Butiran", title: "Butiran Aduan" };
-  return TITLES[pathname] ?? { crumb: pathname.replace(/^\//, "") || "Utama", title: "K-AECS" };
+  return TITLES[pathname] ?? { crumb: pathname.replace(/^\//, "") || "Utama", title: "EduSabah" };
 }
 
 export function AppShell({
@@ -154,7 +154,7 @@ export function AppShell({
         <footer className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
           <div className="flex flex-col items-start justify-between gap-1 border-t border-[color:var(--border)] pt-4 text-xs text-muted-foreground sm:flex-row sm:items-center">
             <p>
-              K-AECS · Sistem Aduan &amp; Penglibatan Warganegara — KPSTI Negeri Sabah
+              EduSabah · Sistem Aduan &amp; Penglibatan Warganegara — KPSTI Negeri Sabah
             </p>
             <p>Hak cipta © {new Date().getFullYear()} Kerajaan Negeri Sabah</p>
           </div>

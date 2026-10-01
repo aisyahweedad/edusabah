@@ -1,7 +1,7 @@
 import { COMPLAINT_CATEGORIES, COMPLAINT_STATUSES, type ComplaintCategory } from "@k-aecs/shared";
 
 /**
- * Build the default system prompt for K-AECS harness runs.
+ * Build the default system prompt for EduSabah harness runs.
  *
  * The same engine powers education Q&A (citizens), complaint drafting/status
  * (citizens + officers) and political-secretary research. Role-specific

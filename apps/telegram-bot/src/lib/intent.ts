@@ -3,7 +3,7 @@ import { COMPLAINT_CATEGORIES, type ComplaintCategory } from "@k-aecs/shared";
 export const CONSENT_VERSION = "v1";
 
 export const CONSENT_TEXT =
-  "K-AECS — Helaian Persetujuan Data\n\n" +
+  "EduSabah — Helaian Persetujuan Data\n\n" +
   "KPSTI (Kementerian Pendidikan, Sains dan Inovasi Negeri Sabah) memproses " +
   "mesej anda untuk menjawab soalan pendidikan dan mengurus aduan. " +
   "Kami mengumpul nama akaun Telegram, nombor ID, kandungan mesej, dan " +
@@ -14,7 +14,7 @@ export const CONSENT_TEXT =
   `Versi: ${CONSENT_VERSION}`;
 
 export const MENU_TEXT =
-  "Selamat datang ke <b>K-AECS</b> — perkhidmatan AI Kementerian Pendidikan, " +
+  "Selamat datang ke <b>EduSabah</b> — perkhidmatan AI Kementerian Pendidikan, " +
   "Sains dan Inovasi Negeri Sabah untuk isu pendidikan.\n\n" +
   "Pilih pilihan di bawah:";
 

@@ -24,7 +24,7 @@ async function nextReferenceNumber(db: ReturnType<typeof getDb>): Promise<string
   const year = new Date().getFullYear();
   const prefix = `KPSTI-${year}-%`;
   const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`cast(count(*) as integer)` })
     .from(complaints)
     .where(like(complaints.referenceNumber, prefix));
   return referenceNumber(year, (row?.count ?? 0) + 1);

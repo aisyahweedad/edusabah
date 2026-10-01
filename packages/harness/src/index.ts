@@ -133,12 +133,12 @@ export function createGateways(): Gateways {
   models.setProvider(
     createProvider({
       id: PROVIDER_ID,
-      name: "K-AECS gateway",
+      name: "EduSabah gateway",
       baseUrl: model.baseUrl,
       models: [model],
       auth: {
         apiKey: {
-          name: "K-AECS AI gateway key",
+          name: "EduSabah AI gateway key",
           resolve: async () => {
             // Local gateways (vLLM/llama.cpp) are frequently keyless; an empty
             // key simply yields no Authorization header.

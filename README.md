@@ -1,6 +1,6 @@
-# K-AECS — AI Citizen Engagement & Complaint Management System
+# EduSabah — AI Citizen Engagement & Complaint Management System
 
-K-AECS (Kebangsaan/State — "Sistem Aduan Warganegara") adalah sistem pengurusan
+EduSabah (Kebangsaan/State — "Sistem Aduan Warganegara") adalah sistem pengurusan
 aduan dan penglibatan warganegara yang didorong AI untuk pendidikan di Negeri
 Sabah, di bawah Kementerian Pendidikan, Sains dan Inovasi Negeri Sabah (KPSTI).
 

@@ -2,7 +2,7 @@
  * Model gateway — OpenAI-compatible API calls (chat completion + embeddings).
  *
  * The Pi harness own provider registration for tool-capable models; this module
- * is the thin layer the rest of K-AECS uses for one-shot completions,
+ * is the thin layer the rest of EduSabah uses for one-shot completions,
  * intent classification, and embeddings (RAG). Everything is interface-driven so
  * providers can be swapped per environment without touching callers.
  */

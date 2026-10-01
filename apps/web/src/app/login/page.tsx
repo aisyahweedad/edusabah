@@ -56,7 +56,7 @@ export default function LoginPage() {
         <div className="relative flex items-center gap-3">
           <BrandMark className="size-11" />
           <div className="leading-tight">
-            <p className="text-xl font-semibold tracking-[0.12em] text-white">K-AECS</p>
+            <p className="text-xl font-semibold tracking-[0.12em] text-white">EduSabah</p>
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-300">
               Sistem Aduan KPSTI
             </p>
@@ -101,7 +101,7 @@ export default function LoginPage() {
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <BrandMark className="size-10" />
             <div className="leading-tight">
-              <p className="text-lg font-semibold text-[color:var(--fg)]">K-AECS</p>
+              <p className="text-lg font-semibold text-[color:var(--fg)]">EduSabah</p>
               <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                 Sistem Aduan KPSTI
               </p>

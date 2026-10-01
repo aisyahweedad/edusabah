@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** K-AECS official mark — shield with ascending books (education). */
+/** EduSabah official mark — shield with ascending books (education). */
 export function BrandMark({ className }: { className?: string }) {
   return (
     <svg
@@ -48,7 +48,7 @@ export function Brand({ compact = false, dark = false }: { compact?: boolean; da
               dark ? "text-white" : "text-slate-900",
             )}
           >
-            K-AECS
+            EduSabah
           </span>
           <span
             className={cn(
