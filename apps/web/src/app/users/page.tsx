@@ -30,7 +30,7 @@ const ROLE_LABELS: Record<string, string> = {
   kpsti_officer: "Pegawai KPSTI",
   supervisor: "Penyelia",
   political_secretary: "Setiausaha Politik",
-  system_admin: "Pentadbir Sistem",
+  system_admin: "Superadmin",
 };
 
 const ROLE_CLASSES: Record<string, string> = {
@@ -57,6 +57,7 @@ async function createOfficer(body: {
     body: JSON.stringify(body),
   });
   const json = (await res.json().catch(() => ({}))) as { message?: string };
+  if (res.status === 401) redirect("/login");
   if (!res.ok) return { ok: false, message: json.message ?? "Gagal cipta pengguna" };
   revalidatePath("/users");
   return { ok: true, message: "" };

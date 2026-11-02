@@ -6,6 +6,16 @@
 export const ROLES = ["kpsti_officer", "supervisor", "political_secretary", "system_admin"] as const;
 export type Role = (typeof ROLES)[number];
 
+/** Display aliases; "superadmin" is the user-facing name for system_admin. */
+export const ROLE_LABELS: Record<Role, string> = {
+  kpsti_officer: "Pegawai KPSTI",
+  supervisor: "Penyelia",
+  political_secretary: "Setiausaha Politik",
+  system_admin: "Superadmin",
+};
+
+export const SUPERADMIN_ROLE: Role = "system_admin";
+
 export const PERMISSIONS = [
   "complaint:view",
   "complaint:create",
@@ -30,6 +40,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "complaint:update_status",
     "complaint:note",
     "citizen:view",
+    "analytics:view",
   ],
   supervisor: [
     "complaint:view",
@@ -44,6 +55,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   political_secretary: [
     "complaint:view",
     "complaint:note",
+    "complaint:escalate",
+    "citizen:view",
     "analytics:view",
     "intelligence:research",
   ],
@@ -113,6 +126,57 @@ export const COMPLAINT_STATUSES = [
   "rejected",
 ] as const;
 export type ComplaintStatus = (typeof COMPLAINT_STATUSES)[number];
+
+/** Harness-assessed severity for a complaint (officer override supported). */
+export const SEVERITIES = ["low", "medium", "high", "urgent"] as const;
+export type Severity = (typeof SEVERITIES)[number];
+
+/** AI intake analysis persisted onto a complaint. */
+export interface ComplaintAiAnalysis {
+  /** Severity proposed by the classifier (0-100 confidence). */
+  severity: Severity;
+  sentiment: "positive" | "neutral" | "negative";
+  priorityScore: number;
+  /** True when safety/profanity filter flagged the content. */
+  sensitive: boolean;
+  /** True when the classifier auto-categorised (vs citizen-selected). */
+  autoCategory: boolean;
+  /** Suggested category when it differs from the citizen selection. */
+  suggestedCategory?: ComplaintCategory;
+  /** Extracted district name, if any. */
+  district?: string;
+  summary: string;
+  /** Duplicate candidate detected at intake. */
+  duplicateOf?: { id: string; referenceNumber: string; similarity: number };
+  model: string;
+  analyzedAt: string;
+}
+
+/** Expected handling time per severity (UC-03 overdue evaluation). */
+export const SEVERITY_SLA_HOURS: Record<Severity, number> = {
+  urgent: 24,
+  high: 72,
+  medium: 168,
+  low: 336,
+};
+
+export function slaHoursFor(severity: string | undefined): number {
+  return SEVERITY_SLA_HOURS[(severity ?? "medium") as Severity] ?? SEVERITY_SLA_HOURS.medium;
+}
+
+/** A complaint is overdue when the SLA window has elapsed and it is still open. */
+export function isOverdue(
+  createdAt: Date | string | number,
+  severity: string | undefined,
+  status: string,
+  now: Date = new Date(),
+): boolean {
+  const terminal = status === "resolved" || status === "closed" || status === "rejected";
+  if (terminal) return false;
+  const created = new Date(createdAt).getTime();
+  if (Number.isNaN(created)) return false;
+  return now.getTime() - created > slaHoursFor(severity) * 3_600_000;
+}
 
 /** States a post-ownership-verification complainant may still change. */
 export const CITIZEN_EDITABLE_STATUSES: readonly ComplaintStatus[] = [

@@ -89,6 +89,7 @@ export async function fetchComplaints(query: Record<string, string> = {}): Promi
     category: string;
     title: string;
     status: string;
+    severity?: string;
     districtCode: string | null;
     createdAt: string;
   }>;
@@ -139,9 +140,73 @@ export async function updateComplaintStatus(id: string, status: string, note?: s
 }
 
 /** Server action: append a note to a complaint. */
-export async function addComplaintNote(id: string, content: string): Promise<void> {
+export async function addComplaintNote(id: string, content: string, isInternal = false): Promise<void> {
   await apiFetch(`/api/v1/complaints/${encodeURIComponent(id)}/notes`, {
     method: "POST",
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, isInternal }),
+  });
+}
+
+export async function fetchNotifications(query: Record<string, string> = {}): Promise<{
+  notifications: Array<{
+    id: string;
+    complaintId: string | null;
+    recipientType: string;
+    templateKey: string;
+    payload: Record<string, unknown>;
+    status: string;
+    createdAt: string;
+  }>;
+  unread: number;
+}> {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) if (v) qs.set(k, v);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch(`/api/v1/notifications${suffix}`);
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  await apiFetch(`/api/v1/notifications/${encodeURIComponent(id)}/read`, { method: "POST" });
+}
+
+export async function fetchAuditEvents(query: Record<string, string> = {}): Promise<{
+  events: Array<{
+    id: string;
+    actorKind: string;
+    actorId: string;
+    action: string;
+    entityType: string | null;
+    entityId: string | null;
+    metadata: Record<string, unknown>;
+    createdAt: string;
+  }>;
+  page: number;
+  pageSize: number;
+  total: number;
+}> {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) if (v) qs.set(k, v);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch(`/api/v1/audit${suffix}`);
+}
+
+export async function assignComplaint(id: string, assigneeId?: string): Promise<void> {
+  await apiFetch(`/api/v1/complaints/${encodeURIComponent(id)}/assign`, {
+    method: "PATCH",
+    body: JSON.stringify(assigneeId ? { assigneeId } : {}),
+  });
+}
+
+export async function escalateComplaint(id: string, note?: string): Promise<void> {
+  await apiFetch(`/api/v1/complaints/${encodeURIComponent(id)}/escalate`, {
+    method: "PATCH",
+    body: JSON.stringify({ note: note || undefined }),
+  });
+}
+
+export async function setComplaintSeverity(id: string, severity: string): Promise<void> {
+  await apiFetch(`/api/v1/complaints/${encodeURIComponent(id)}/severity`, {
+    method: "PATCH",
+    body: JSON.stringify({ severity }),
   });
 }

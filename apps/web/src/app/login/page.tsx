@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BotIcon, BrainCircuitIcon, BarChart3Icon, ShieldCheckIcon, LockKeyholeIcon } from "lucide-react";
 import { clientApiBase, SESSION_COOKIE } from "@/lib/constants";
@@ -16,7 +15,6 @@ const FEATURES = [
 ];
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +35,7 @@ export default function LoginPage() {
       const body = (await res.json()) as { token?: string; message?: string };
       if (!res.ok || !body.token) throw new Error(body.message ?? "Login gagal");
       document.cookie = `${SESSION_COOKIE}=${body.token}; path=/; max-age=86400; SameSite=Lax`;
-      router.push("/dashboard");
-      router.refresh();
+      window.location.assign("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login gagal");
     } finally {

@@ -15,9 +15,10 @@ import {
 } from "@earendil-works/pi-ai";
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
 import { createHash } from "node:crypto";
+import { asc, eq } from "drizzle-orm";
 import { loadEnv } from "@k-aecs/config";
 import { getDb } from "@k-aecs/database";
-import { aiRuns, aiToolCalls } from "@k-aecs/database/schema";
+import { aiRuns, aiToolCalls, messages } from "@k-aecs/database/schema";
 import type { Citation, Role } from "@k-aecs/shared";
 import { createRegistry, type ToolContext, type ToolDefinition } from "@k-aecs/tools";
 import { buildSystemPrompt } from "./system-prompt.js";
@@ -156,11 +157,56 @@ export function createGateways(): Gateways {
   return { models, providerId: PROVIDER_ID, modelId: model.id };
 }
 
+/** Build a fresh session per run; conversation history is rehydrated from the
+ * DB into the prompt (see buildHistoryPrefix) because the Pi session storage
+ * is in-memory per process. */
 export function buildSession(conversationId: string): Session {
   const storage = new InMemorySessionStorage({
     metadata: { id: conversationId, createdAt: new Date().toISOString() },
   });
   return new Session(storage);
+}
+
+/**
+ * Rehydrate recent conversation history from the messages table so the model
+ * remembers earlier turns (UC-01 context retention). Without this, every run
+ * starts blank and the assistant re-asks the same questions forever.
+ */
+async function buildHistoryPrompt(
+  conversationId: string,
+  currentUserMessage: string,
+): Promise<string> {
+  const db = getDb();
+  const rows = await db
+    .select({ role: messages.role, content: messages.content })
+    .from(messages)
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(asc(messages.createdAt))
+    .limit(40);
+
+  // The current user message is already persisted by the caller before the
+  // run; drop the trailing duplicate so it is not injected twice.
+  const prior = rows.slice(0, -1);
+  if (!prior.length) return "";
+
+  const turns = prior
+    .slice(-16)
+    .map((m) => `${m.role === "user" ? "Citizen" : "You"}: ${m.content}`)
+    .join("\n\n");
+
+  return [
+    "<conversation_history>",
+    "Below is the recent transcript of this Telegram conversation. Use it as",
+    "context: never re-ask for information the citizen has already provided,",
+    "and refer back to earlier answers instead of starting over.",
+    "",
+    turns,
+    "",
+    "</conversation_history>",
+    "",
+    `The citizen's latest message is: ${currentUserMessage}`,
+    "",
+  ].join("\n");
 }
 
 /** Wrap a registry tool definition in the pi AgentHarnessTool shape. */
@@ -271,6 +317,13 @@ export async function runHarness(input: HarnessRunInput): Promise<HarnessRunResu
     throw new Error(`model ${modelId} not found on provider ${PROVIDER_ID}`);
   }
 
+  // Tool context: citizens carry their Telegram id so intake tools can
+  // attribute the ticket to the right account.
+  const toolContext: ToolContext = {
+    ...input.actor,
+    telegramChatId: input.actor.telegramUserId ?? input.channelId,
+  };
+
   const systemPrompt =
     input.systemPrompt ??
     buildSystemPrompt({
@@ -287,7 +340,7 @@ export async function runHarness(input: HarnessRunInput): Promise<HarnessRunResu
     systemPrompt,
     tools,
     activeToolNames: tools.map((t) => t.name),
-    toolContext: input.actor,
+    toolContext,
     streamOptions: { timeoutMs: env.HARNESS_STREAM_TIMEOUT_MS },
   });
 
@@ -332,7 +385,11 @@ export async function runHarness(input: HarnessRunInput): Promise<HarnessRunResu
     };
     signal?.addEventListener("abort", abortListener, { once: true });
     try {
-      const assistant = await harness.prompt(input.userMessage);
+      // Rehydrate history so multi-turn chats keep context (fixes the
+      // "asks the same questions forever" loop).
+      const promptWithHistory =
+        (await buildHistoryPrompt(input.conversationId, input.userMessage)) + input.userMessage;
+      const assistant = await harness.prompt(promptWithHistory);
       finalText = textFromAssistant(assistant);
       usageValues = usageArgs(assistant);
       if (aborted) status = "error";

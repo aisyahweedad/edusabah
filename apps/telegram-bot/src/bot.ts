@@ -1,6 +1,6 @@
 import { Bot, InlineKeyboard, type Context } from "grammy";
-import { COMPLAINT_CATEGORIES, type ComplaintCategory } from "@k-aecs/shared";
-import { createComplaint, harnessChat, lookupComplaint } from "./lib/api.js";
+import { COMPLAINT_CATEGORIES, type ComplaintCategory, slaHoursFor } from "@k-aecs/shared";
+import { BotApiError, createComplaint, escalateOwnComplaint, harnessChat, lookupComplaint } from "./lib/api.js";
 import {
   CATEGORY_LABELS,
   CATEGORY_LABELS_INV,
@@ -16,6 +16,43 @@ type BotContext = Context;
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+type LineKind = "heading" | "bullet" | "paragraph";
+
+function classifyLine(line: string): LineKind {
+  const trimmed = line.trim();
+  if (/^#{1,6}\s+/.test(trimmed) || /^\*\*[^*]+\*\*:?$/.test(trimmed)) return "heading";
+  if (/^([-*•]|\d+[.)])\s+/.test(trimmed)) return "bullet";
+  return "paragraph";
+}
+
+/** One blank line between points, two before each big point (heading). */
+function neatenAiText(text: string): string {
+  const out: string[] = [];
+
+  for (const raw of text.replace(/\r\n/g, "\n").split("\n")) {
+    const line = raw.trimEnd();
+    if (!line.trim()) continue;
+
+    const kind = classifyLine(line);
+    if (out.length) {
+      while (out.length && out[out.length - 1] === "") out.pop();
+      out.push("", ...(kind === "heading" ? [""] : []));
+    }
+    out.push(line);
+  }
+
+  return out.join("\n").trim();
+}
+
+/** Render the AI's Markdown-ish output as Telegram HTML after escaping it. */
+function formatAiHtml(text: string): string {
+  return escapeHtml(text)
+    .replace(/\*\*([^\n*]+)\*\*/g, "<b>$1</b>")
+    .replace(/__([^\n_]+)__/g, "<b>$1</b>")
+    .replace(/`([^`\n]+)`/g, "<code>$1</code>")
+    .replace(/^#{1,6}\s+(.+)$/gm, "<b>$1</b>");
 }
 
 export function telegramUserIdOf(ctx: BotContext): string | undefined {
@@ -51,10 +88,14 @@ export function registerBotHandlers(bot: Bot<BotContext>): void {
   });
 
   bot.command("menu", async (ctx) => {
+    const chatId = chatIdOf(ctx);
+    if (chatId !== undefined) setState(chatId, { kind: "idle" });
     await ctx.reply(MENU_TEXT, { parse_mode: "HTML", reply_markup: menuKeyboard() });
   });
 
   bot.command("help", async (ctx) => {
+    const chatId = chatIdOf(ctx);
+    if (chatId !== undefined) setState(chatId, { kind: "idle" });
     await helpReply(ctx);
   });
 
@@ -93,6 +134,7 @@ export function registerBotHandlers(bot: Bot<BotContext>): void {
       return;
     }
     if (which === "help") {
+      setState(chatId, { kind: "idle" });
       await helpReply(ctx);
       return;
     }
@@ -145,12 +187,20 @@ export function registerBotHandlers(bot: Bot<BotContext>): void {
       });
       clearState(chatId);
       const statusLabel = STATUS_LABELS[complaint.status] ?? complaint.status;
+      const slaHours = slaHoursFor(complaint.severity);
+      const slaText =
+        slaHours >= 24 ? `${Math.round(slaHours / 24)} hari bekerja` : `${slaHours} jam`;
+      const escalatedNote = complaint.status === "escalated"
+        ? "\n\n⚠️ Aduan ini <b>dinaikkan tahap secara automatik</b> kerana kepentingan tinggi. Setiausaha Politik telah dimaklumkan."
+        : "";
       await ctx.reply(
         "Aduan anda telah diterima. Terima kasih.\n\n" +
           `Nombor rujukan: <b>${escapeHtml(complaint.referenceNumber)}</b>\n` +
           `Status: ${escapeHtml(statusLabel)}\n` +
-          `Tarikh: ${escapeHtml(formatDate(complaint.createdAt))}\n\n` +
-          "Simpan nombor rujukan ini untuk menyemak status melalui /menu → Semak Aduan.",
+          `Tarikh: ${escapeHtml(formatDate(complaint.createdAt))}\n` +
+          `Masa sasaran tindakan: <b>${escapeHtml(slaText)}</b>` +
+          escalatedNote +
+          "\n\nSimpan nombor rujukan ini untuk menyemak status melalui /menu → Semak Aduan.",
         { parse_mode: "HTML" },
       );
     } catch (error) {
@@ -168,6 +218,36 @@ export function registerBotHandlers(bot: Bot<BotContext>): void {
     await ctx.reply("Aduan dibatalkan. Tiada data disimpan.", { reply_markup: menuKeyboard() });
   });
 
+  // UC-03: citizen-triggered escalation for overdue complaints.
+  bot.callbackQuery(/^lookup:escalate:(.+)$/, async (ctx) => {
+    const chatId = chatIdOf(ctx);
+    const tgId = telegramUserIdOf(ctx);
+    if (chatId === undefined || tgId === undefined) return;
+    await ctx.answerCallbackQuery();
+    const reference = ctx.match[1];
+    if (!reference) return;
+    try {
+      await escalateOwnComplaint(tgId, reference);
+      await ctx.reply(
+        `Aduan <b>${escapeHtml(reference)}</b> telah dinaikkan tahap ke Setiausaha Politik. ` +
+          "Anda akan dimaklumkan apabila terdapat kemaskini.",
+        { parse_mode: "HTML", reply_markup: menuKeyboard() },
+      );
+    } catch (error) {
+      await ctx.reply(
+        error instanceof Error ? `Maaf: ${error.message}` : "Maaf, eskalasi tidak dapat dilakukan.",
+      );
+    }
+  });
+
+  bot.callbackQuery("menu:back", async (ctx) => {
+    const chatId = chatIdOf(ctx);
+    if (chatId === undefined) return;
+    await ctx.answerCallbackQuery();
+    setState(chatId, { kind: "idle" });
+    await ctx.reply(MENU_TEXT, { parse_mode: "HTML", reply_markup: menuKeyboard() });
+  });
+
   bot.on("message", async (ctx) => {
     const chatId = chatIdOf(ctx);
     const tgId = telegramUserIdOf(ctx);
@@ -181,29 +261,58 @@ export function registerBotHandlers(bot: Bot<BotContext>): void {
     }
 
     if (state.kind === "lookup") {
-      setState(chatId, { kind: "idle" });
       await ctx.reply("Menyemak…");
       try {
-        const { complaint, notes } = await lookupComplaint(tgId, text);
+        const { complaint, notes, tracking } = await lookupComplaint(tgId, text);
+        setState(chatId, { kind: "idle" });
         const statusLabel = STATUS_LABELS[complaint.status] ?? complaint.status;
         let message =
           `${complaint.referenceNumber}\n` +
           `Tajuk: <b>${escapeHtml(complaint.title)}</b>\n` +
           `Status: <b>${escapeHtml(statusLabel)}</b>\n` +
           `Dikemaskini: ${escapeHtml(formatDate(complaint.createdAt))}\n`;
+        if (tracking?.responsibleUnit) {
+          message += `Unit bertanggungjawab: <b>${escapeHtml(tracking.responsibleUnit)}</b>\n`;
+        }
+        if (tracking?.responsibleOfficer) {
+          message += `Pegawai: ${escapeHtml(tracking.responsibleOfficer)}\n`;
+        }
+        if (tracking?.overdue) {
+          message +=
+            "\n⚠️ <b>Aduan ini melebihi masa sasaran.</b>\n" +
+            "Anda boleh naikkan tahap aduan ini kepada pihak yang lebih tinggi.\n";
+        }
+        if ((complaint.status === "resolved" || complaint.status === "closed") && complaint.resolutionSummary) {
+          message += `\n<i>Rumusan penyelesaian:</i>\n${escapeHtml(complaint.resolutionSummary)}\n`;
+        }
         if (notes.length) {
           message += "\n<i>Makluman terkini:</i>\n";
           for (const note of notes.slice(0, 3)) {
             message += `• ${escapeHtml(formatDate(note.createdAt))} — ${escapeHtml(note.content.slice(0, 300))}\n`;
           }
         }
-        await ctx.reply(message, { parse_mode: "HTML" });
+        const keyboard =
+          tracking?.offerEscalation && tracking.overdue
+            ? new InlineKeyboard()
+                .text("Naikkan tahap aduan", `lookup:escalate:${complaint.referenceNumber}`)
+                .row()
+                .text("Menu utama", "menu:back")
+            : new InlineKeyboard().text("Menu utama", "menu:back");
+        await ctx.reply(message, { parse_mode: "HTML", reply_markup: keyboard });
       } catch (error) {
-        await ctx.reply(
-          error instanceof Error
-            ? `Maaf: ${error.message}`
-            : "Maaf, aduan tidak dapat disemak. Sahkan nombor rujukan anda.",
-        );
+        const notFound =
+          error instanceof BotApiError &&
+          (error.code === "NOT_FOUND" || error.code === "NOT_YOURS");
+        const intro = notFound
+          ? `Nombor rujukan <b>${escapeHtml(text)}</b> tidak ditemui untuk akaun anda.`
+          : "Maaf, aduan tidak dapat disemak buat masa ini.";
+        const next = notFound
+          ? "Sila hantar nombor rujukan lain (contoh: KPSTI-2026-000001), atau ketik Menu utama untuk keluar."
+          : "Sila hantar semula nombor rujukan anda, atau ketik Menu utama untuk keluar.";
+        await ctx.reply(`${intro}\n\n${next}`, {
+          parse_mode: "HTML",
+          reply_markup: new InlineKeyboard().text("Menu utama", "menu:back"),
+        });
       }
       return;
     }
@@ -213,18 +322,23 @@ export function registerBotHandlers(bot: Bot<BotContext>): void {
       await ctx.reply("Memproses soalan anda…");
       try {
         const result = await harnessChat(tgId, String(chatId), text);
-        const tools = result.toolCalls
-          .filter((t) => t.ok)
-          .map((t) => `🔎 ${t.toolName}`)
-          .join(", ");
-        const footnote = tools ? `\n\n<i>${escapeHtml(tools)}</i>` : "";
-        const answer = escapeHtml(result.text || "Tiada jawapan.") + footnote;
-        await ctx.reply(answer, { parse_mode: "HTML" });
+        const answer = formatAiHtml(neatenAiText(result.text || "Tiada jawapan."));
+        await ctx.reply(answer, {
+          parse_mode: "HTML",
+          reply_markup: new InlineKeyboard()
+            .text("Buat Aduan", "menu:complaint")
+            .text("Menu utama", "menu:back"),
+        });
       } catch (error) {
         await ctx.reply(
           error instanceof Error
             ? `Maaf, perkhidmatan sedang sibuk.\n\n${error.message}`
             : "Maaf, perkhidmatan sedang sibuk. Sila cuba lagi.",
+          {
+            reply_markup: new InlineKeyboard()
+              .text("Buat Aduan", "menu:complaint")
+              .text("Menu utama", "menu:back"),
+          },
         );
       }
       return;
@@ -315,6 +429,9 @@ async function helpReply(ctx: BotContext): Promise<void> {
       "• <b>Semak Aduan</b> — semak status aduan menggunakan nombor rujukan.\n\n" +
       "Waktu operasi sokongan: Isnin–Jumaat, 8 pagi–5 petang.\n" +
       "Untuk kecemasan sekolah, sila hubungi Pejabat Pendidikan Daerah berhampiran.",
-    { parse_mode: "HTML" },
+    {
+      parse_mode: "HTML",
+      reply_markup: new InlineKeyboard().text("Menu utama", "menu:back"),
+    },
   );
 }

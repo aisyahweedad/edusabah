@@ -9,6 +9,8 @@ export interface ToolContext {
   actorKind: "citizen" | "officer";
   actorId: string;
   role: Role | null;
+  /** Telegram chat id the run originated from (citizen intake). */
+  telegramChatId?: string;
 }
 
 export interface ToolDefinition {
@@ -99,6 +101,28 @@ export function createRegistry(): ToolRegistry {
     timeoutMs: 25_000,
     execute: async (params) => {
       return fetchUrl(String(params.url ?? ""), Number(params.max_chars ?? 12_000));
+    },
+  });
+
+  registry.register({
+    name: "create_complaint",
+    description:
+      "File a citizen's complaint as an official ticket in K-AECS. ONLY call this after the " +
+      "citizen has explicitly confirmed they want the complaint submitted (e.g. 'ya, hantar', " +
+      "'submit it'). Requires: category (one of: facility, teacher, bullying, transport, canteen, " +
+      "admission, funding, welfare, curriculum, other), title (min 5 chars), description (min 20 " +
+      "chars, self-contained: what happened, where, when, desired outcome). The caller must be a " +
+      "citizen on Telegram. Returns the official reference number — always relay it to the citizen.",
+    parameters: z.object({
+      category: z.string().min(3).max(20),
+      title: z.string().min(5).max(200),
+      description: z.string().min(20).max(4000),
+      location: z.string().max(200).optional(),
+    }),
+    timeoutMs: 60_000,
+    execute: async (params, ctx) => {
+      const { createComplaintTicket } = await import("./create-complaint.js");
+      return createComplaintTicket(params, ctx);
     },
   });
 

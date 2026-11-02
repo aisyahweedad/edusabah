@@ -33,7 +33,10 @@ export default async function ComplaintsPage({
 
   const sp = await searchParams;
   const status = sp.status ?? "";
-  const q = sp.q ?? "";
+  const rawQuery = sp.q ?? "";
+  // A dropped link can land in the search box; treat it as empty instead of
+  // filtering out every complaint.
+  const q = /^https?:\/\//i.test(rawQuery.trim()) ? "" : rawQuery;
   const pageNum = Math.max(1, Number(sp.page ?? "1") || 1);
 
   const query: Record<string, string> = {};
@@ -72,9 +75,10 @@ export default async function ComplaintsPage({
     <Link
       key={href}
       href={href}
+      draggable={false}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+        "inline-flex h-7 shrink-0 select-none items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors [-webkit-user-drag:none]",
         active
           ? "border-transparent bg-[color:var(--primary)] text-white"
           : "border-[color:var(--border)] bg-white text-muted-foreground hover:border-[color:var(--primary)]/40 hover:text-[color:var(--fg)]",
@@ -138,7 +142,9 @@ export default async function ComplaintsPage({
             </Button>
             {q && (
               <Button asChild variant="ghost" className="h-9 text-muted-foreground">
-                <Link href={filterBase(status)}>Reset</Link>
+                <Link href={status ? `/complaints?status=${encodeURIComponent(status)}` : "/complaints"}>
+                  Reset
+                </Link>
               </Button>
             )}
           </form>
@@ -161,6 +167,9 @@ export default async function ComplaintsPage({
                 </TableHead>
                 <TableHead className="hidden text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground md:table-cell">
                   Daerah
+                </TableHead>
+                <TableHead className="hidden text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground lg:table-cell">
+                  Keutamaan
                 </TableHead>
                 <TableHead className="hidden text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground lg:table-cell">
                   Tarikh
@@ -188,6 +197,25 @@ export default async function ComplaintsPage({
                   <TableCell className="hidden text-muted-foreground md:table-cell">
                     {c.districtCode ?? "—"}
                   </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {c.severity ? (
+                      <span
+                        className={`rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold uppercase ring-1 ${
+                          c.severity === "urgent"
+                            ? "bg-red-50 text-red-700 ring-red-200"
+                            : c.severity === "high"
+                              ? "bg-orange-50 text-orange-700 ring-orange-200"
+                              : c.severity === "low"
+                                ? "bg-slate-100 text-slate-600 ring-slate-200"
+                                : "bg-blue-50 text-blue-700 ring-blue-200"
+                        }`}
+                      >
+                        {c.severity}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell className="hidden text-muted-foreground lg:table-cell">
                     {new Date(c.createdAt).toLocaleDateString("ms-MY", {
                       day: "2-digit",
@@ -205,7 +233,7 @@ export default async function ComplaintsPage({
               ))}
               {visible.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="p-0">
+                  <TableCell colSpan={7} className="p-0">
                     <EmptyState
                       icon={InboxIcon}
                       title={q || status ? "Tiada hasil padan" : "Belum ada aduan"}

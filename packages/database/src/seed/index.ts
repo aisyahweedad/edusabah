@@ -1,5 +1,6 @@
 import { getDb } from "../index.js";
-import { districts, categories } from "../schema/index.js";
+import { districts, categories, officers } from "../schema/index.js";
+import { hashPassword } from "@k-aecs/auth";
 
 const SABAH_DISTRICTS = [
   "Beaufort", "Beluran", "Kalabakan", "Keningau", "Kinabatangan", "Kota Belud",
@@ -22,15 +23,59 @@ const CATEGORIES = [
   { id: "other", name: "Lain-lain", description: "Soalan dan aduan lain berkaitan pendidikan" },
 ];
 
+/**
+ * Default admin accounts (passwords from env with safe demo defaults).
+ * Seeding is idempotent: existing emails are left untouched.
+ */
+const DEFAULT_OFFICERS = [
+  {
+    email: "superadmin@kaecs.test",
+    name: "Superadmin KPSTI",
+    role: "system_admin",
+    passwordEnv: "SEED_SUPERADMIN_PASSWORD",
+    fallback: "superadmin123",
+  },
+  {
+    email: "secretary@kaecs.test",
+    name: "Setiausaha Politik",
+    role: "political_secretary",
+    passwordEnv: "SEED_SECRETARY_PASSWORD",
+    fallback: "secretary123",
+  },
+  {
+    email: "officer@kaecs.test",
+    name: "Pegawai KPSTI",
+    role: "kpsti_officer",
+    passwordEnv: "SEED_OFFICER_PASSWORD",
+    fallback: "officer123",
+  },
+];
+
 export async function migrateAndSeed() {
-  await getDb()
+  const db = getDb();
+  await db
     .insert(districts)
     .values(SABAH_DISTRICTS.map((name, i) => ({
       id: String(i + 1),
       name,
       code: `D${String(i + 1).padStart(3, "0")}`,
-    })));
-  await getDb().insert(categories).values(CATEGORIES);
+    })))
+    .onConflictDoNothing();
+  await db.insert(categories).values(CATEGORIES).onConflictDoNothing();
+
+  for (const officer of DEFAULT_OFFICERS) {
+    const password = process.env[officer.passwordEnv] ?? officer.fallback;
+    const passwordHash = await hashPassword(password);
+    await db
+      .insert(officers)
+      .values({
+        email: officer.email,
+        name: officer.name,
+        role: officer.role,
+        passwordHash,
+      })
+      .onConflictDoNothing({ target: officers.email });
+  }
 }
 
 if (import.meta.url === process.argv[1]?.replace(/\.js$/, "") || !!process.env.DATABASE_URL) {

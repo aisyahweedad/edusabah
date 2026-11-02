@@ -27,7 +27,8 @@
     "@k-aecs/validation": "workspace:*",
     "drizzle-orm": "^0.36.4",
     "fastify": "^5.1.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@k-aecs/intake": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",

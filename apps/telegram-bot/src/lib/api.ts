@@ -20,6 +20,7 @@ export interface CitizenComplaint {
   title: string;
   description: string;
   status: string;
+  severity?: string;
   createdAt: string;
 }
 
@@ -90,13 +91,35 @@ export function createComplaint(
   });
 }
 
-/** Citizen-owned compliance lookup by reference number. */
-export function lookupComplaint(
+/** Citizen-triggered escalation for an overdue complaint (UC-03). */
+export async function escalateOwnComplaint(
+  telegramUserId: string,
+  referenceNumber: string,
+): Promise<void> {
+  await request(`/api/v1/complaints/by-ref/${encodeURIComponent(referenceNumber)}/escalate`, {
+    method: "POST",
+    headers: { "x-telegram-user-id": telegramUserId },
+    body: JSON.stringify({ source: "citizen_overdue" }),
+  });
+}
+
+/** Citizen-owned compliance lookup by reference number (UC-03). */
+export interface ComplaintTracking {
+  overdue: boolean;
+  slaHours: number;
+  offerEscalation: boolean;
+  responsibleUnit?: string;
+  responsibleOfficer?: string;
+  resolutionSummary?: string;
+}
+
+export async function lookupComplaint(
   telegramUserId: string,
   referenceNumber: string,
 ): Promise<{
-  complaint: CitizenComplaint;
+  complaint: CitizenComplaint & { resolutionSummary?: string | null };
   notes: Array<{ content: string; createdAt: string }>;
+  tracking?: ComplaintTracking;
 }> {
   return request(`/api/v1/complaints/by-ref/${encodeURIComponent(referenceNumber)}`, {
     headers: { "x-telegram-user-id": telegramUserId },
