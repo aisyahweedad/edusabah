@@ -26,18 +26,34 @@ export const dynamic = "force-dynamic";
 export default async function ComplaintsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; page?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    category?: string;
+    severity?: string;
+    district?: string;
+    q?: string;
+    page?: string;
+  }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
   const sp = await searchParams;
   const status = sp.status ?? "";
-  const q = sp.q ?? "";
+  const category = sp.category ?? "";
+  const severity = sp.severity ?? "";
+  const district = sp.district ?? "";
+  const rawQuery = sp.q ?? "";
+  // A dropped link can land in the search box; treat it as empty instead of
+  // filtering out every complaint.
+  const q = /^https?:\/\//i.test(rawQuery.trim()) ? "" : rawQuery;
   const pageNum = Math.max(1, Number(sp.page ?? "1") || 1);
 
   const query: Record<string, string> = {};
   if (status) query.status = status;
+  if (category) query.category = category;
+  if (severity) query.severity = severity;
+  if (district) query.districtCode = district;
   if (q) query.q = q;
   if (pageNum > 1) query.page = String(pageNum);
 
@@ -72,9 +88,10 @@ export default async function ComplaintsPage({
     <Link
       key={href}
       href={href}
+      draggable={false}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+        "inline-flex h-7 shrink-0 select-none items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors [-webkit-user-drag:none]",
         active
           ? "border-transparent bg-[color:var(--primary)] text-white"
           : "border-[color:var(--border)] bg-white text-muted-foreground hover:border-[color:var(--primary)]/40 hover:text-[color:var(--fg)]",
@@ -85,19 +102,31 @@ export default async function ComplaintsPage({
     </Link>
   );
 
-  const filterBase = (value: string) => {
+  const filterParams = (opts?: { status?: string; includeQuery?: boolean }) => {
     const p = new URLSearchParams();
-    if (value) p.set("status", value);
-    if (q) p.set("q", q);
+    const nextStatus = opts?.status ?? status;
+    if (nextStatus) p.set("status", nextStatus);
+    if (category) p.set("category", category);
+    if (severity) p.set("severity", severity);
+    if (district) p.set("district", district);
+    if (opts?.includeQuery !== false && q) p.set("q", q);
+    return p;
+  };
+
+  const filterBase = (value: string) => {
+    const p = filterParams({ status: value });
     return `/complaints${p.toString() ? `?${p.toString()}` : ""}`;
   };
 
   const pageHref = (n: number) => {
-    const p = new URLSearchParams();
-    if (status) p.set("status", status);
-    if (q) p.set("q", q);
+    const p = filterParams();
     p.set("page", String(n));
     return `/complaints?${p.toString()}`;
+  };
+
+  const resetHref = () => {
+    const p = filterParams({ includeQuery: false });
+    return `/complaints${p.toString() ? `?${p.toString()}` : ""}`;
   };
 
   return (
@@ -124,6 +153,9 @@ export default async function ComplaintsPage({
         <CardContent className="pt-2.5">
           <form method="GET" className="flex flex-wrap items-center gap-2">
             <input type="hidden" name="status" value={status} />
+            <input type="hidden" name="category" value={category} />
+            <input type="hidden" name="severity" value={severity} />
+            <input type="hidden" name="district" value={district} />
             <div className="relative min-w-56 flex-1">
               <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -136,12 +168,20 @@ export default async function ComplaintsPage({
             <Button type="submit" variant="outline" className="h-9">
               Cari
             </Button>
-            {q && (
+            {(q || category || severity || district) && (
               <Button asChild variant="ghost" className="h-9 text-muted-foreground">
-                <Link href={filterBase(status)}>Reset</Link>
+                <Link href={resetHref()}>Reset</Link>
               </Button>
             )}
           </form>
+          {(category || severity || district) && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Tapisan aktif:
+              {category ? ` Kategori ${category}` : ""}
+              {severity ? ` · Keutamaan ${severity}` : ""}
+              {district ? ` · Daerah ${district}` : ""}
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -161,6 +201,9 @@ export default async function ComplaintsPage({
                 </TableHead>
                 <TableHead className="hidden text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground md:table-cell">
                   Daerah
+                </TableHead>
+                <TableHead className="hidden text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground lg:table-cell">
+                  Keutamaan
                 </TableHead>
                 <TableHead className="hidden text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground lg:table-cell">
                   Tarikh
@@ -188,6 +231,25 @@ export default async function ComplaintsPage({
                   <TableCell className="hidden text-muted-foreground md:table-cell">
                     {c.districtCode ?? "—"}
                   </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {c.severity ? (
+                      <span
+                        className={`rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold uppercase ring-1 ${
+                          c.severity === "urgent"
+                            ? "bg-red-50 text-red-700 ring-red-200"
+                            : c.severity === "high"
+                              ? "bg-orange-50 text-orange-700 ring-orange-200"
+                              : c.severity === "low"
+                                ? "bg-slate-100 text-slate-600 ring-slate-200"
+                                : "bg-blue-50 text-blue-700 ring-blue-200"
+                        }`}
+                      >
+                        {c.severity}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell className="hidden text-muted-foreground lg:table-cell">
                     {new Date(c.createdAt).toLocaleDateString("ms-MY", {
                       day: "2-digit",
@@ -205,7 +267,7 @@ export default async function ComplaintsPage({
               ))}
               {visible.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="p-0">
+                  <TableCell colSpan={7} className="p-0">
                     <EmptyState
                       icon={InboxIcon}
                       title={q || status ? "Tiada hasil padan" : "Belum ada aduan"}

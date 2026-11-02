@@ -3,8 +3,10 @@ import {
   COMPLAINT_CATEGORIES,
   COMPLAINT_STATUSES,
   ROLES,
+  SEVERITIES,
   type ComplaintCategory,
   type ComplaintStatus,
+  type Severity,
 } from "@k-aecs/shared";
 
 const categoryEnum = z.enum(
@@ -13,6 +15,7 @@ const categoryEnum = z.enum(
 const statusEnum = z.enum(
   COMPLAINT_STATUSES as readonly [ComplaintStatus, ...ComplaintStatus[]],
 );
+const severityEnum = z.enum(SEVERITIES as readonly [Severity, ...Severity[]]);
 
 export const telegramId = z.coerce.string().trim().min(4).max(32);
 export const phoneNumber = z
@@ -53,11 +56,16 @@ export const complaintCreateSchema = z.object({
 
 export const complaintReplySchema = z.object({
   content: z.string().trim().min(1).max(4000),
+  isInternal: z.boolean().optional().default(false),
 });
 
 export const complaintUpdateStatusSchema = z.object({
   status: statusEnum,
   note: z.string().trim().max(4000).optional(),
+});
+
+export const complaintSeveritySchema = z.object({
+  severity: severityEnum,
 });
 
 export const harnessRunSchema = z.object({
@@ -101,6 +109,8 @@ export const paginationSchema = z.object({
 export const complaintQuerySchema = paginationSchema.extend({
   status: statusEnum.optional(),
   category: categoryEnum.optional(),
+  severity: severityEnum.optional(),
+  districtCode: z.string().trim().max(10).optional(),
   institutionCode: z.string().optional(),
   q: z.string().trim().max(300).optional(),
 });

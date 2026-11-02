@@ -38,6 +38,11 @@ export const complaints = sqliteTable(
       .notNull()
       .$defaultFn(() => []),
     status: text("status", { length: 24 }).notNull().default("submitted"),
+    severity: text("severity", { length: 10 }).notNull().default("medium"),
+    priorityScore: integer("priority_score").notNull().default(50),
+    sentiment: text("sentiment", { length: 12 }).notNull().default("neutral"),
+    sensitive: integer("sensitive", { mode: "boolean" }).notNull().default(false),
+    duplicateOf: text("duplicate_of", { length: 36 }),
     assignedTo: text("assigned_to", { length: 36 }),
     assignedAt: integer("assigned_at", { mode: "timestamp_ms" }),
     resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
@@ -62,6 +67,8 @@ export const complaints = sqliteTable(
     complaints_district_idx: index("complaints_district_idx").on(t.districtCode),
     complaints_telegram_idx: index("complaints_telegram_idx").on(t.telegramUserId),
     complaints_created_idx: index("complaints_created_idx").on(t.createdAt),
+    complaints_severity_idx: index("complaints_severity_idx").on(t.severity),
+    complaints_duplicate_idx: index("complaints_duplicate_idx").on(t.duplicateOf),
   }),
 );
 

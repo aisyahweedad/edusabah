@@ -15,6 +15,12 @@ import {
   CheckCheckIcon,
   PenLineIcon,
   SendIcon,
+  BrainCircuitIcon,
+  AlertTriangleIcon,
+  CopyIcon,
+  UserPlusIcon,
+  ArrowUpCircleIcon,
+  GaugeIcon,
 } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { Banner } from "@/components/banner";
@@ -27,12 +33,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   addComplaintNote,
+  assignComplaint,
+  escalateComplaint,
   fetchComplaint,
+  fetchOfficers,
   getSession,
+  setComplaintSeverity,
   updateComplaintStatus,
   type WithError,
 } from "@/lib/api";
-import { COMPLAINT_STATUSES } from "@k-aecs/shared";
+import { COMPLAINT_STATUSES, SEVERITIES } from "@k-aecs/shared";
 import { statusLabel } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
@@ -59,15 +69,65 @@ async function handleNote(formData: FormData) {
   "use server";
   const id = String(formData.get("id") ?? "");
   const content = String(formData.get("content") ?? "").trim();
+  const isInternal = formData.get("isInternal") === "1";
   if (!id || !content) return;
   try {
-    await addComplaintNote(id, content);
+    await addComplaintNote(id, content, isInternal);
   } catch (e) {
     redirect(`/complaints/${id}?error=${encodeURIComponent(e instanceof Error ? e.message : "Gagal tambah nota")}`);
   }
   revalidatePath(`/complaints/${id}`);
   redirect(`/complaints/${id}?ok=note`);
 }
+
+async function handleSeverity(formData: FormData) {
+  "use server";
+  const id = String(formData.get("id") ?? "");
+  const severity = String(formData.get("severity") ?? "");
+  if (!id || !severity) return;
+  try {
+    await setComplaintSeverity(id, severity);
+  } catch (e) {
+    redirect(`/complaints/${id}?error=${encodeURIComponent(e instanceof Error ? e.message : "Gagal ubah keutamaan")}`);
+  }
+  revalidatePath(`/complaints/${id}`);
+  redirect(`/complaints/${id}?ok=severity`);
+}
+
+async function handleAssign(formData: FormData) {
+  "use server";
+  const id = String(formData.get("id") ?? "");
+  const assigneeId = String(formData.get("assigneeId") ?? "").trim();
+  if (!id) return;
+  try {
+    await assignComplaint(id, assigneeId || undefined);
+  } catch (e) {
+    redirect(`/complaints/${id}?error=${encodeURIComponent(e instanceof Error ? e.message : "Gagal menugaskan")}`);
+  }
+  revalidatePath(`/complaints/${id}`);
+  redirect(`/complaints/${id}?ok=assign`);
+}
+
+async function handleEscalate(formData: FormData) {
+  "use server";
+  const id = String(formData.get("id") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  if (!id) return;
+  try {
+    await escalateComplaint(id, note || undefined);
+  } catch (e) {
+    redirect(`/complaints/${id}?error=${encodeURIComponent(e instanceof Error ? e.message : "Gagal eskalasi")}`);
+  }
+  revalidatePath(`/complaints/${id}`);
+  redirect(`/complaints/${id}?ok=escalate`);
+}
+
+const SEVERITY_STYLES: Record<string, string> = {
+  urgent: "bg-red-50 text-red-700 ring-red-200",
+  high: "bg-orange-50 text-orange-700 ring-orange-200",
+  medium: "bg-blue-50 text-blue-700 ring-blue-200",
+  low: "bg-slate-100 text-slate-600 ring-slate-200",
+};
 
 const META = [
   { icon: FolderOpenIcon, key: "Kategori", value: (c: { category: string }) => c.category },
@@ -111,8 +171,29 @@ export default async function ComplaintDetailPage({
         citizenId?: string | null;
         createdAt: string;
         attachments: string[];
+        severity?: string;
+        sentiment?: string;
+        priorityScore?: number;
+        sensitive?: boolean;
+        duplicateOf?: string | null;
+        assignedTo?: string | null;
+        aiAnalysis?: {
+          summary?: string;
+          suggestedCategory?: string;
+          duplicateOf?: { referenceNumber: string; similarity: number };
+          model?: string;
+          autoCategory?: boolean;
+        } | null;
       })
     | undefined;
+
+  const canAssign = session.permissions.includes("complaint:assign");
+  const canEscalate = session.permissions.includes("complaint:escalate");
+  const canUpdate = session.permissions.includes("complaint:update_status");
+
+  const officersList = canAssign
+    ? await fetchOfficers().catch(() => ({ officers: [] }))
+    : { officers: [] };
 
   const toStatusName = complaint ? statusLabel(complaint.status) : "";
 
@@ -129,10 +210,13 @@ export default async function ComplaintDetailPage({
       {data.__error && (
         <Banner tone="error">{data.__error}</Banner>
       )}
-      {sp.ok === "status" && <Banner tone="success" autoHideMs={5000}>Status aduan telah dikemas kini.</Banner>}
-      {sp.ok === "closed" && <Banner tone="success" autoHideMs={5000}>Aduan telah ditutup.</Banner>}
-      {sp.ok === "note" && <Banner tone="success" autoHideMs={5000}>Nota telah dihantar.</Banner>}
-      {sp.error && <Banner tone="error">{sp.error}</Banner>}
+  {sp.ok === "status" && <Banner tone="success" autoHideMs={5000}>Status aduan telah dikemas kini.</Banner>}
+  {sp.ok === "closed" && <Banner tone="success" autoHideMs={5000}>Aduan telah ditutup.</Banner>}
+  {sp.ok === "note" && <Banner tone="success" autoHideMs={5000}>Nota telah dihantar.</Banner>}
+  {sp.ok === "severity" && <Banner tone="success" autoHideMs={5000}>Keutamaan dikemas kini.</Banner>}
+  {sp.ok === "assign" && <Banner tone="success" autoHideMs={5000}>Aduan telah ditugaskan.</Banner>}
+  {sp.ok === "escalate" && <Banner tone="success" autoHideMs={5000}>Aduan dinaikkan tahap ke Setiausaha Politik.</Banner>}
+  {sp.error && <Banner tone="error">{sp.error}</Banner>}
 
       {complaint && (
         <>
@@ -260,6 +344,120 @@ export default async function ComplaintDetailPage({
             </div>
 
             <div className="space-y-6">
+              {complaint.severity && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <BrainCircuitIcon className="size-4 text-[color:var(--primary)]" />
+                      Analisis AI
+                    </CardTitle>
+                    <CardDescription>
+                      {complaint.aiAnalysis?.model === "heuristic"
+                        ? "Analisis kata kunci (AI tidak tersedia)"
+                        : `Model: ${complaint.aiAnalysis?.model ?? "—"}`}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase ring-1 ${SEVERITY_STYLES[complaint.severity] ?? "bg-slate-100 text-slate-600 ring-slate-200"}`}
+                      >
+                        <AlertTriangleIcon className="size-3" />
+                        {complaint.severity}
+                      </span>
+                      {complaint.sensitive && (
+                        <span className="rounded-md bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 ring-1 ring-rose-200">
+                          Kandungan sensitif
+                        </span>
+                      )}
+                      {complaint.duplicateOf && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200">
+                          <CopyIcon className="size-3" /> Duplikat
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Skor keutamaan</p>
+                        <p className="font-semibold text-[color:var(--fg)]">{complaint.priorityScore ?? 50}/100</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Sentimen</p>
+                        <p className="font-semibold capitalize text-[color:var(--fg)]">{complaint.sentiment ?? "neutral"}</p>
+                      </div>
+                    </div>
+                    {complaint.aiAnalysis?.summary && (
+                      <p className="rounded-lg bg-muted px-3 py-2 text-sm text-[color:var(--fg)]">
+                        {complaint.aiAnalysis.summary}
+                      </p>
+                    )}
+                    {complaint.aiAnalysis?.duplicateOf && (
+                      <p className="text-xs text-amber-700">
+                        Calon duplikat: {complaint.aiAnalysis.duplicateOf.referenceNumber} ·{" "}
+                        {(complaint.aiAnalysis.duplicateOf.similarity * 100).toFixed(0)}% serupa
+                      </p>
+                    )}
+
+                    {canUpdate && (
+                      <form action={handleSeverity} className="flex items-end gap-2 border-t pt-3">
+                        <input type="hidden" name="id" value={complaint.id} />
+                        <div className="flex-1 space-y-1">
+                          <Label htmlFor="severity" className="text-xs">
+                            Ubah keutamaan (override pegawai)
+                          </Label>
+                          <select
+                            id="severity"
+                            name="severity"
+                            defaultValue={complaint.severity}
+                            className="h-9 w-full rounded-lg border border-[color:var(--border)] bg-white px-2.5 text-sm"
+                          >
+                            {SEVERITIES.map((s) => (
+                              <option key={s} value={s}>
+                                {s}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <Button type="submit" variant="outline" size="sm" className="h-9">
+                          <GaugeIcon className="size-3.5" /> Simpan
+                        </Button>
+                      </form>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {canAssign && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Penugasan</CardTitle>
+                    <CardDescription>
+                      {complaint.assignedTo ? "Aduan telah ditugaskan" : "Belum ditugaskan"}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form action={handleAssign} className="space-y-3">
+                      <input type="hidden" name="id" value={complaint.id} />
+                      <select
+                        name="assigneeId"
+                        defaultValue={complaint.assignedTo ?? ""}
+                        className="h-9 w-full rounded-lg border border-[color:var(--border)] bg-white px-2.5 text-sm"
+                      >
+                        <option value="">— Pilih pegawai —</option>
+                        {officersList.officers.map((o) => (
+                          <option key={String(o.id)} value={String(o.id)}>
+                            {String(o.name)} ({String(o.role)})
+                          </option>
+                        ))}
+                      </select>
+                      <Button type="submit" className="h-9 w-full">
+                        <UserPlusIcon className="size-4" /> Tugaskan
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Kemaskini status</CardTitle>
@@ -305,6 +503,19 @@ export default async function ComplaintDetailPage({
                       </Button>
                     </div>
                   </form>
+                  {canEscalate && complaint.status !== "escalated" && (
+                    <form action={handleEscalate} className="mt-3 border-t pt-3">
+                      <input type="hidden" name="id" value={complaint.id} />
+                      <Textarea name="note" placeholder="Sebab eskalasi (pilihan)…" className="min-h-16" />
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        className="mt-2 h-9 w-full text-amber-700 hover:border-amber-300 hover:bg-amber-50"
+                      >
+                        <ArrowUpCircleIcon className="size-4" /> Eskalasi ke Setiausaha Politik
+                      </Button>
+                    </form>
+                  )}
                 </CardContent>
               </Card>
 
@@ -320,6 +531,15 @@ export default async function ComplaintDetailPage({
                   <form action={handleNote} className="space-y-3">
                     <input type="hidden" name="id" value={complaint.id} />
                     <Textarea name="content" required placeholder="Tulis nota ringkas…" className="min-h-24" />
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        name="isInternal"
+                        value="1"
+                        className="size-3.5 rounded border-[color:var(--border)]"
+                      />
+                      Nota dalaman (tidak dihantar kepada warganegara)
+                    </label>
                     <Button type="submit" className="h-9 w-full">
                       <SendIcon className="size-4" />
                       Hantar nota

@@ -11,7 +11,7 @@ const ROLE_LABELS: Record<string, string> = {
   kpsti_officer: "Pegawai KPSTI",
   supervisor: "Penyelia",
   political_secretary: "Setiausaha Politik",
-  system_admin: "Pentadbir Sistem",
+  system_admin: "Superadmin",
 };
 
 export function SidebarNav({

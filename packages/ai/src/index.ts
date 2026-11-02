@@ -147,3 +147,11 @@ export async function speechToText(req: SpeechToTextRequest): Promise<SpeechToTe
 
 /** Object storage of audio requires the S3 layer; this helper leaves room for it. */
 export type { SpeechToTextRequest as SttRequest };
+
+export {
+  classifyComplaint,
+  heuristicAnalysis,
+  textSimilarity,
+  embeddingSimilarity,
+  type ClassifyInput,
+} from "./intake.js";

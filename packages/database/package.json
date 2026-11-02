@@ -25,6 +25,7 @@
     "db:seed": "tsx src/seed/index.ts"
   },
   "dependencies": {
+    "@k-aecs/auth": "workspace:*",
     "@k-aecs/config": "workspace:*",
     "@k-aecs/shared": "workspace:*",
     "@libsql/client": "^0.18.0",

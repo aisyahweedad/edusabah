@@ -23,10 +23,14 @@
     "@k-aecs/config": "workspace:*",
     "@k-aecs/database": "workspace:*",
     "@k-aecs/harness": "workspace:*",
+    "@k-aecs/intake": "workspace:*",
     "@k-aecs/shared": "workspace:*",
+    "@k-aecs/tools": "workspace:^",
     "@k-aecs/validation": "workspace:*",
     "drizzle-orm": "^0.36.4",
     "fastify": "^5.1.0",
+    "pdf-lib": "^1.17.1",
+    "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {

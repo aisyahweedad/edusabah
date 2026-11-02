@@ -3,7 +3,11 @@ import {
   InboxIcon,
   BrainCircuitIcon,
   UsersIcon,
+  BellIcon,
+  ScrollTextIcon,
   ShieldCheckIcon,
+  SparklesIcon,
+  HistoryIcon,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,12 +32,23 @@ export const NAV_GROUPS: NavGroup[] = [
     heading: "Pengurusan",
     items: [
       { href: "/complaints", label: "Aduan", icon: InboxIcon, permission: "complaint:view" },
+      { href: "/notifications", label: "Pemberitahuan", icon: BellIcon, permission: "complaint:view" },
       { href: "/runs", label: "AI & Carian", icon: BrainCircuitIcon, permission: "analytics:view" },
+      { href: "/insights", label: "Tanya Data", icon: SparklesIcon, permission: "analytics:view" },
+      {
+        href: "/insights/history",
+        label: "Sejarah Tanya Data",
+        icon: HistoryIcon,
+        permission: "analytics:view",
+      },
     ],
   },
   {
     heading: "Pentadbiran",
-    items: [{ href: "/users", label: "Pengguna", icon: UsersIcon, permission: "users:manage" }],
+    items: [
+      { href: "/users", label: "Pengguna", icon: UsersIcon, permission: "users:manage" },
+      { href: "/audit", label: "Audit Log", icon: ScrollTextIcon, permission: "audit:view" },
+    ],
   },
 ];
 
