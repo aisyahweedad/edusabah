@@ -9,6 +9,7 @@ import { harnessRoutes } from "./routes/harness.js";
 import { complaintRoutes } from "./routes/complaints.js";
 import { analyticsRoutes } from "./routes/analytics.js";
 import { auditRoutes, notificationRoutes } from "./routes/audit.js";
+import { insightsRoutes } from "./routes/insights.js";
 import { telegramRoutes } from "./routes/telegram.js";
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -56,6 +57,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(analyticsRoutes, { prefix: "/api/v1/analytics" });
   await app.register(auditRoutes, { prefix: "/api/v1" });
   await app.register(notificationRoutes, { prefix: "/api/v1" });
+  await app.register(insightsRoutes, { prefix: "/api/v1" });
   await app.register(telegramRoutes, { prefix: "/webhooks" });
 
   return app;

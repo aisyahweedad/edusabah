@@ -210,3 +210,76 @@ export async function setComplaintSeverity(id: string, severity: string): Promis
     body: JSON.stringify({ severity }),
   });
 }
+
+export interface InsightRow {
+  key: string;
+  label: string;
+  value: number;
+}
+
+export interface InsightFilters {
+  from?: string;
+  to?: string;
+  status?: string[];
+  category?: string[];
+  severity?: string[];
+  districtCode?: string[];
+  search?: string;
+}
+
+export interface InsightData {
+  metric: string;
+  groupBy: string;
+  filters: InsightFilters;
+  rows: InsightRow[];
+  chart: { type: "bar" | "donut" | "line"; title: string; xKey: string; yKey: string };
+  total: number;
+  generatedAt: string;
+}
+
+export interface InsightSuggestion {
+  id: string;
+  title: string;
+  description: string;
+  action:
+    | { type: "navigate"; href: string }
+    | {
+        type: "escalate";
+        groupBy?: string;
+        key?: string;
+        label?: string;
+        filters: InsightFilters;
+      };
+}
+
+export interface InsightChatSummary {
+  id: string;
+  title: string;
+  questions: number;
+  lastActivityAt: string;
+  lastQuestion: string;
+}
+
+export interface InsightChatMessage {
+  id: string;
+  question: string;
+  answer: string | null;
+  payload: {
+    data?: InsightData | null;
+    suggestions?: InsightSuggestion[];
+  } | null;
+  createdAt: string;
+}
+
+export interface InsightChatDetail {
+  chat: { id: string; title: string; createdAt: string };
+  messages: InsightChatMessage[];
+}
+
+export async function fetchInsightChats(): Promise<{ chats: InsightChatSummary[] }> {
+  return apiFetch("/api/v1/insights/chats");
+}
+
+export async function fetchInsightChat(id: string): Promise<InsightChatDetail> {
+  return apiFetch(`/api/v1/insights/chats/${encodeURIComponent(id)}`);
+}

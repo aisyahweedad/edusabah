@@ -6,6 +6,8 @@ import {
   BellIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
+  SparklesIcon,
+  HistoryIcon,
   type LucideIcon,
 } from "lucide-react";
 
@@ -32,6 +34,13 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/complaints", label: "Aduan", icon: InboxIcon, permission: "complaint:view" },
       { href: "/notifications", label: "Pemberitahuan", icon: BellIcon, permission: "complaint:view" },
       { href: "/runs", label: "AI & Carian", icon: BrainCircuitIcon, permission: "analytics:view" },
+      { href: "/insights", label: "Tanya Data", icon: SparklesIcon, permission: "analytics:view" },
+      {
+        href: "/insights/history",
+        label: "Sejarah Tanya Data",
+        icon: HistoryIcon,
+        permission: "analytics:view",
+      },
     ],
   },
   {

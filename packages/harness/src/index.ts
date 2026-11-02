@@ -23,6 +23,8 @@ import type { Citation, Role } from "@k-aecs/shared";
 import { createRegistry, type ToolContext, type ToolDefinition } from "@k-aecs/tools";
 import { buildSystemPrompt } from "./system-prompt.js";
 
+export { buildInsightsPrompt, buildSystemPrompt } from "./system-prompt.js";
+
 export interface HarnessActor extends ToolContext {
   /** Telegram numeric id (citizens) or officer user id (staff). */
   actorId: string;
@@ -39,6 +41,8 @@ export interface HarnessRunInput {
   intent?: string;
   channelId?: string;
   signal?: AbortSignal;
+  /** Explicit prior turns (used by the officer insights workspace). */
+  history?: Array<{ role: "user" | "assistant"; content: string }>;
 }
 
 export interface HarnessToolCallRecord {
@@ -80,6 +84,35 @@ const PARAM_SCHEMAS: Record<string, TSchema> = {
   fetch_url: Type.Object({
     url: Type.String(),
     max_chars: Type.Optional(Type.Number({ minimum: 1000, maximum: 20000 })),
+  }),
+  query_complaints: Type.Object({
+    metric: Type.Optional(
+      Type.Union([
+        Type.Literal("count"),
+        Type.Literal("avg_resolution_hours"),
+        Type.Literal("avg_priority"),
+      ]),
+    ),
+    group_by: Type.Optional(
+      Type.Union([
+        Type.Literal("district"),
+        Type.Literal("category"),
+        Type.Literal("status"),
+        Type.Literal("severity"),
+        Type.Literal("month"),
+        Type.Literal("day"),
+        Type.Literal("officer"),
+        Type.Literal("none"),
+      ]),
+    ),
+    from: Type.Optional(Type.String()),
+    to: Type.Optional(Type.String()),
+    status: Type.Optional(Type.Array(Type.String())),
+    category: Type.Optional(Type.Array(Type.String())),
+    severity: Type.Optional(Type.Array(Type.String())),
+    district_code: Type.Optional(Type.Array(Type.String())),
+    search: Type.Optional(Type.String()),
+    limit: Type.Optional(Type.Number({ minimum: 1, maximum: 50 })),
   }),
 };
 
@@ -205,6 +238,29 @@ async function buildHistoryPrompt(
     "</conversation_history>",
     "",
     `The citizen's latest message is: ${currentUserMessage}`,
+    "",
+  ].join("\n");
+}
+
+function buildHistoryFromTurns(
+  history: Array<{ role: "user" | "assistant"; content: string }>,
+  currentUserMessage: string,
+): string {
+  const prior = history.filter((turn) => turn.content.trim()).slice(-16);
+  if (!prior.length) return "";
+  const turns = prior
+    .map((turn) => `${turn.role === "user" ? "Officer" : "You"}: ${turn.content}`)
+    .join("\n\n");
+  return [
+    "<conversation_history>",
+    "Below is the recent transcript of this officer's data-analysis chat. Use it",
+    "as context: do not repeat earlier answers and keep the same terminology.",
+    "",
+    turns,
+    "",
+    "</conversation_history>",
+    "",
+    `The officer's latest message is: ${currentUserMessage}`,
     "",
   ].join("\n");
 }
@@ -387,8 +443,10 @@ export async function runHarness(input: HarnessRunInput): Promise<HarnessRunResu
     try {
       // Rehydrate history so multi-turn chats keep context (fixes the
       // "asks the same questions forever" loop).
-      const promptWithHistory =
-        (await buildHistoryPrompt(input.conversationId, input.userMessage)) + input.userMessage;
+      const historyPrefix = input.history
+        ? buildHistoryFromTurns(input.history, input.userMessage)
+        : await buildHistoryPrompt(input.conversationId, input.userMessage);
+      const promptWithHistory = historyPrefix + input.userMessage;
       const assistant = await harness.prompt(promptWithHistory);
       finalText = textFromAssistant(assistant);
       usageValues = usageArgs(assistant);

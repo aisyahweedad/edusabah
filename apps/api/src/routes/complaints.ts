@@ -81,11 +81,13 @@ export async function complaintRoutes(app: FastifyInstance): Promise<void> {
     async (request, reply) => {
       const qp = complaintQuerySchema.safeParse(request.query);
       if (!qp.success) return sendError(reply, qp.error);
-      const { page, pageSize, status, category, q } = qp.data;
+      const { page, pageSize, status, category, severity, districtCode, q } = qp.data;
       const db = getDb();
       const conditions = [
         status ? eq(complaints.status, status) : undefined,
         category ? eq(complaints.category, category) : undefined,
+        severity ? eq(complaints.severity, severity) : undefined,
+        districtCode ? eq(complaints.districtCode, districtCode) : undefined,
         q
           ? or(
               like(complaints.referenceNumber, `%${q}%`),

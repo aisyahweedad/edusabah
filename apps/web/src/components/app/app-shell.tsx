@@ -21,6 +21,8 @@ const TITLES: Record<string, { crumb: string; title: string }> = {
   "/dashboard": { crumb: "Carta", title: "Carta Ringkasan" },
   "/complaints": { crumb: "Aduan", title: "Aduan Warganegara" },
   "/runs": { crumb: "AI & Carian", title: "AI & Carian Web" },
+  "/insights": { crumb: "Tanya Data", title: "Tanya Data & Analitik AI" },
+  "/insights/history": { crumb: "Tanya Data / Sejarah", title: "Sejarah Tanya Data" },
   "/users": { crumb: "Pengguna", title: "Pengurusan Pengguna" },
   "/notifications": { crumb: "Pemberitahuan", title: "Pemberitahuan Pegawai" },
   "/audit": { crumb: "Audit", title: "Log Audit Sistem" },
@@ -36,6 +38,9 @@ const ROLE_LABELS: Record<string, string> = {
 function pageMeta(pathname: string): { crumb: string; title: string } {
   const detail = pathname.startsWith("/complaints/");
   if (detail) return { crumb: "Aduan / Butiran", title: "Butiran Aduan" };
+  if (pathname.startsWith("/insights/history/")) {
+    return { crumb: "Tanya Data / Sejarah", title: "Butiran Chat AI" };
+  }
   return TITLES[pathname] ?? { crumb: pathname.replace(/^\//, "") || "Utama", title: "EduSabah" };
 }
 

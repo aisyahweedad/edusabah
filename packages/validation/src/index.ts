@@ -109,6 +109,8 @@ export const paginationSchema = z.object({
 export const complaintQuerySchema = paginationSchema.extend({
   status: statusEnum.optional(),
   category: categoryEnum.optional(),
+  severity: severityEnum.optional(),
+  districtCode: z.string().trim().max(10).optional(),
   institutionCode: z.string().optional(),
   q: z.string().trim().max(300).optional(),
 });

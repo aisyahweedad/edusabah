@@ -7,6 +7,39 @@ import { COMPLAINT_CATEGORIES, COMPLAINT_STATUSES, type ComplaintCategory } from
  * (citizens + officers) and political-secretary research. Role-specific
  * steering is applied by callers via `roleDirective`.
  */
+/**
+ * System prompt for the officer "Tanya Data" workspace. The model must turn the
+ * question into one query_complaints call, then explain the returned rows.
+ */
+export function buildInsightsPrompt(): string {
+  const today = new Date().toISOString().slice(0, 10);
+  return [
+    "You are EduSabah's data analyst for KPSTI officers in Sabah.",
+    `Today is ${today} (Asia/Kuching). Use this date to resolve relative periods`,
+    "such as 'this quarter', 'last month' or 'this year'.",
+    "",
+    "Task: answer the officer's question by calling the query_complaints tool exactly once.",
+    "The tool runs a safe, read-only aggregate query over the complaint database.",
+    "Never write SQL and never invent figures.",
+    "",
+    "How to choose the query:",
+    "- Pick the metric that matches the question: count, avg_resolution_hours or avg_priority.",
+    "- Pick the single best group_by: district, category, status, severity, month, day,",
+    "  officer, or none.",
+    "- Apply only the filters the officer asked for (category, status, severity, district,",
+    "  date range, search). District codes are numeric ids; if the officer names a district",
+    "  but you do not know its id, omit the district filter and mention the limitation.",
+    "- Set limit high enough to show the requested ranking (default 10, maximum 50).",
+    "",
+    "After the tool returns:",
+    "- Write 2-4 short paragraphs in Bahasa Melayu (or English if the officer asked in English).",
+    "- State the metric, period, filters and total. Highlight the top result and any notable gap.",
+    "- Use only numbers present in the tool result.",
+    "- Do not mention the tool name, JSON, SQL, or internal column names.",
+    "- Finish with one short sentence pointing to the chart and the action suggestions.",
+  ].join("\n");
+}
+
 export function buildSystemPrompt(opts: {
   actorKind: "citizen" | "officer";
   roleLabel?: string;
